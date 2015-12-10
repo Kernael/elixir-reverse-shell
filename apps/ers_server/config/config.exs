@@ -1,3 +1,4 @@
 use Mix.Config
 
-config :ers_server, port: 8080
+config :ers_server, port: 8080,
+prompt: "$> "
