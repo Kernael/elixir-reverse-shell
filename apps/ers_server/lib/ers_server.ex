@@ -6,10 +6,12 @@ defmodule Ers.Server do
   @module     __MODULE__
   @supervisor __MODULE__.Supervisor
 
-  def accept_opts, do: [:binary, packet: :line, active: false, reuseaddr: true]
-  def port,        do: Application.get_env(:ers_server, :port)
-  def prompt,      do: Application.get_env(:ers_server, :prompt)
-  def version,     do: Ers.Server.Mixfile.project[:version]
+  def accept_opts,  do: [:binary, packet: :line, active: false, reuseaddr: true]
+  def port,         do: Application.get_env(:ers_server, :port)
+  def prompt,       do: Application.get_env(:ers_server, :prompt)
+  def version,      do: Ers.Server.Mixfile.project[:version]
+  def end_of_input, do: Application.get_env(:ers_server, :end_of_input) <> "\n"
+  def timeout,      do: Application.get_env(:ers_server, :timeout) <> "\n"
 
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
@@ -47,15 +49,21 @@ defmodule Ers.Server do
 
   def process(client, :read) do
     case :gen_tcp.recv(client, 0) do
-      {:ok, resp}       -> process(client, resp)
-      {:error, :closed} -> put_info("Client disconnected")
+      {:ok, resp}        -> process(client, resp)
+      {:error, :closed}  -> put_info("Client disconnected")
     end
   end
 
   def process(client, resp) when is_bitstring(resp) do
-    put_msg(resp)
+    if resp == end_of_input, do: process(client, :send),
+       else: handle_message(client, resp)
+  end
 
-    process(client, :send)
+  def handle_message(client, msg) do
+    if msg == timeout, do: put_error("timeout"),
+       else: put_msg(String.rstrip(msg))
+
+    process(client, :read)
   end
 
   def which_addr(client) do
