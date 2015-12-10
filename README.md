@@ -1,19 +1,13 @@
-# Ers
+# Elixir Reverse Shell
 
-**TODO: Add description**
+Compile application
 
-## Installation
+`> mix compile`
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
+Run client
 
-  1. Add  to your list of dependencies in `mix.exs`:
+`apps/ers_client> mix ers.client`
 
-        def deps do
-          [{:, "~> 0.0.1"}]
-        end
+Run server
 
-  2. Ensure  is started before your application:
-
-        def application do
-          [applications: [:]]
-        end
+`apps/ers_server> mix ers.server`
