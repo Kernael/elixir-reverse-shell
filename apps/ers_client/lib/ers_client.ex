@@ -1,25 +1,24 @@
 defmodule Ers.Client do
   use Application
 
-  @module __MODULE__
-
-  def connect_opts, do: [:binary, active: false]
-  def host,         do: Application.get_env(:ers_client, :host)
-  def port,         do: Application.get_env(:ers_client, :port)
-  def end_of_input, do: Application.get_env(:ers_client, :end_of_input) <> "\n"
-  def timeout,      do: Application.get_env(:ers_client, :timeout) <> "\n"
+  @module        __MODULE__
+  @connect_opts  [:binary, active: false]
+  @host          Application.get_env(:ers_client, :host)
+  @port          Application.get_env(:ers_client, :port)
+  @end_of_input  Application.get_env(:ers_client, :end_of_input) <> "\n"
+  @timeout       Application.get_env(:ers_client, :timeout) <> "\n"
 
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
-    children = [worker(Task, [@module, :connect, [port]])]
+    children = [worker(Task, [@module, :connect, [@port]])]
 
     opts = [strategy: :one_for_one, name: Ers.Client.Supervisor]
     Supervisor.start_link(children, opts)
   end
 
   def connect(port) do
-    case :gen_tcp.connect(to_char_list(host), port, connect_opts) do
+    case :gen_tcp.connect(to_char_list(@host), port, @connect_opts) do
       {:ok, server} -> wait_for_input(server)
       _             -> sleep()
     end
@@ -43,11 +42,11 @@ defmodule Ers.Client do
                Task.async(fn -> :os.cmd(cmd) end)
                |> Task.await(5000)
              catch
-               :exit, _ -> timeout
+               :exit, _ -> @timeout
              end
 
     :ok = :gen_tcp.send(server, output)
-    :ok = :gen_tcp.send(server, end_of_input)
+    :ok = :gen_tcp.send(server, @end_of_input)
 
     wait_for_input(server)
   end
